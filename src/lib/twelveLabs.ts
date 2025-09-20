@@ -9,8 +9,12 @@ export class TwelveLabsService {
 
   constructor() {
     // Initialize the TwelveLabs client with API key
-    const apiKey = process.env.TL_API_KEY || process.env.TWELVE_LABS_API_KEY || '';
-    console.log('Initializing TwelveLabs client with API key:', apiKey.substring(0, 10) + '...');
+    const apiKey = process.env.TWELVE_LABS_API_KEY || process.env.TL_API_KEY || '';
+    if (!apiKey) {
+      console.warn('WARNING: TwelveLabs API key not found in environment variables!');
+      console.warn('Please set TWELVE_LABS_API_KEY in your environment');
+    }
+    console.log('Initializing TwelveLabs client with API key:', apiKey ? apiKey.substring(0, 10) + '...' : 'NOT SET');
 
     this.client = new TwelveLabs({
       apiKey: apiKey

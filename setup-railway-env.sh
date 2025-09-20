@@ -12,6 +12,7 @@ railway variables set GOOGLE_CLIENT_SECRET="$GOOGLE_CLIENT_SECRET"
 railway variables set GOOGLE_REDIRECT_URI="$GOOGLE_REDIRECT_URI"
 railway variables set GOOGLE_REFRESH_TOKEN="$GOOGLE_REFRESH_TOKEN"
 railway variables set TWELVE_LABS_API_KEY="$TWELVE_LABS_API_KEY"
+railway variables set TL_API_KEY="$TL_API_KEY"
 railway variables set NEXT_PUBLIC_BASE_URL="https://zeus-video-tool.up.railway.app"
 railway variables set JWT_SECRET="$JWT_SECRET"
 
