@@ -1,0 +1,17 @@
+# nixpacks.toml
+[phases.setup]
+nixPkgs = ["nodejs-18_x", "ffmpeg", "python3"]
+
+[phases.install]
+cmds = ["npm ci --production=false"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm run start"
+
+[variables]
+NODE_ENV = "production"
+PORT = "3000"
+SKIP_ENV_VALIDATION = "true"
