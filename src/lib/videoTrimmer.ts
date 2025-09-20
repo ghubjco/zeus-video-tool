@@ -2,9 +2,22 @@ import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 
+// Try to use ffmpeg-static first, then fall back to system ffmpeg
 if (ffmpegStatic) {
+  console.log('Using ffmpeg-static from:', ffmpegStatic);
   ffmpeg.setFfmpegPath(ffmpegStatic);
+} else {
+  console.log('ffmpeg-static not available, checking for system ffmpeg...');
+  try {
+    const ffmpegPath = execSync('which ffmpeg').toString().trim();
+    console.log('Found system ffmpeg at:', ffmpegPath);
+    ffmpeg.setFfmpegPath(ffmpegPath);
+  } catch (error) {
+    console.error('WARNING: ffmpeg not found! Video processing will fail.');
+    console.error('Please ensure ffmpeg is installed on the system.');
+  }
 }
 
 export interface TrimOptions {

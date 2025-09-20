@@ -132,16 +132,32 @@ export class VideoProcessor {
     const outputPath = path.join(tempDir, `output_${Date.now()}.mp4`);
 
     try {
+      console.log('Processing video from URL:', videoUrl);
+      console.log('Input path:', inputPath);
+      console.log('Output path:', outputPath);
+
       // Download the video based on its type
       if (this.isTikTokUrl(videoUrl)) {
+        console.log('Detected TikTok URL');
         await this.downloadTikTokVideo(videoUrl, inputPath);
       } else if (this.isYouTubeUrl(videoUrl)) {
+        console.log('Detected YouTube URL');
         await this.downloadYouTubeVideo(videoUrl, inputPath);
       } else {
+        console.log('Detected regular video URL');
         await this.downloadRegularVideo(videoUrl, inputPath);
       }
 
-      console.log('Video downloaded, trimming...');
+      console.log('Video downloaded successfully');
+
+      // Check if file exists
+      if (!fs.existsSync(inputPath)) {
+        throw new Error(`Downloaded file not found at ${inputPath}`);
+      }
+
+      const stats = fs.statSync(inputPath);
+      console.log(`Downloaded file size: ${stats.size} bytes`);
+      console.log('Starting video trim...');
 
       // Trim the video
       await VideoTrimmer.trimVideo({

@@ -13,6 +13,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    console.log('Starting video processing with params:', {
+      videoUrl,
+      campaignName,
+      campaignFolderId,
+      startTime,
+      endTime,
+      uploadType
+    });
+
     const processor = new VideoProcessor();
     const result = await processor.processAndSaveVideo({
       videoUrl,
@@ -23,9 +32,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       uploadType
     });
 
+    console.log('Video processing completed successfully');
     res.status(200).json(result);
   } catch (error: any) {
     console.error('Error processing video:', error);
+    console.error('Error stack:', error.stack);
 
     if (error.message?.includes('service-account-key.json')) {
       return res.status(500).json({
