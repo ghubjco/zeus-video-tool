@@ -162,7 +162,10 @@ export class VideoProcessor {
 
       // Try to upload to TwelveLabs if API key is configured
       let twelveLabsTask = null;
-      if (process.env.TWELVE_LABS_API_KEY && process.env.TWELVE_LABS_API_KEY !== 'your_twelve_labs_api_key_here') {
+      const tlApiKey = process.env.TWELVE_LABS_API_KEY || process.env.TL_API_KEY;
+      console.log('TwelveLabs API key check:', tlApiKey ? 'Found (length: ' + tlApiKey.length + ')' : 'NOT FOUND');
+
+      if (tlApiKey && tlApiKey.startsWith('tlk_')) {
         try {
           console.log('Uploading to TwelveLabs...');
           twelveLabsTask = await this.twelveLabs.uploadVideo(
@@ -173,10 +176,12 @@ export class VideoProcessor {
           console.log('TwelveLabs task ID:', twelveLabsTask?.taskId);
         } catch (error: any) {
           console.error('TwelveLabs upload failed (non-critical):', error.message || error);
+          console.error('Full error:', error);
           // Continue even if TwelveLabs fails - Google Drive upload succeeded
         }
       } else {
-        console.log('Skipping TwelveLabs upload - API key not configured');
+        console.log('Skipping TwelveLabs upload - API key not configured or invalid');
+        console.log('Expected format: tlk_...');
       }
 
       // Clean up temp files
@@ -242,7 +247,9 @@ export class VideoProcessor {
 
       // Try to upload to TwelveLabs if configured
       let twelveLabsTask = null;
-      if (process.env.TWELVE_LABS_API_KEY && process.env.TWELVE_LABS_API_KEY !== 'your_twelve_labs_api_key_here') {
+      const tlApiKey = process.env.TWELVE_LABS_API_KEY || process.env.TL_API_KEY;
+
+      if (tlApiKey && tlApiKey.startsWith('tlk_')) {
         try {
           twelveLabsTask = await this.twelveLabs.uploadVideo(
             outputPath,
