@@ -131,8 +131,8 @@ export class WatermarkRemovalService {
           '-q:v 2'     // High quality frames
         ])
         .output(path.join(outputDir, 'frame_%04d.png'))
-        .on('end', resolve)
-        .on('error', reject)
+        .on('end', () => resolve())
+        .on('error', (err) => reject(err))
         .run();
     });
   }
@@ -150,8 +150,8 @@ export class WatermarkRemovalService {
           '-pix_fmt yuv420p'
         ])
         .output(outputPath)
-        .on('end', resolve)
-        .on('error', reject)
+        .on('end', () => resolve())
+        .on('error', (err) => reject(err))
         .run();
     });
   }
