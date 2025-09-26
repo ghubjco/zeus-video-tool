@@ -6,6 +6,10 @@ import fs from 'fs';
 import os from 'os';
 import axios from 'axios';
 import youtubedl from 'youtube-dl-exec';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 export interface ProcessVideoOptions {
   videoUrl: string;
@@ -32,6 +36,22 @@ export class VideoProcessor {
       hasTwelveLabsKey: !!process.env.TWELVE_LABS_API_KEY || !!process.env.TL_API_KEY,
       tmpDir: os.tmpdir()
     });
+
+    // Check for yt-dlp availability
+    this.checkYtdlpAvailability();
+  }
+
+  private async checkYtdlpAvailability(): Promise<void> {
+    try {
+      const { stdout } = await execAsync('which yt-dlp');
+      console.log('yt-dlp found at:', stdout.trim());
+
+      const { stdout: version } = await execAsync('yt-dlp --version');
+      console.log('yt-dlp version:', version.trim());
+    } catch (error) {
+      console.error('yt-dlp not found in system PATH');
+      console.error('Will attempt to use embedded youtube-dl-exec');
+    }
   }
 
   private generateFileName(campaignName: string, uploadType: string = 'video'): string {
@@ -43,6 +63,8 @@ export class VideoProcessor {
 
   private async downloadTikTokVideo(videoUrl: string, outputPath: string): Promise<void> {
     console.log('Downloading TikTok video using yt-dlp...');
+    console.log('URL:', videoUrl);
+    console.log('Output path:', outputPath);
 
     try {
       // yt-dlp works with TikTok URLs as well
@@ -57,27 +79,70 @@ export class VideoProcessor {
         ]
       };
 
-      // Use system yt-dlp on Railway if available
+      // Check for yt-dlp paths
+      const possiblePaths = [
+        '/usr/local/bin/yt-dlp',
+        '/usr/bin/yt-dlp',
+        '/app/.heroku/python/bin/yt-dlp',
+        '/opt/venv/bin/yt-dlp'
+      ];
+
       if (process.env.RAILWAY_ENVIRONMENT) {
-        ytdlOptions.youtubeDlPath = '/usr/local/bin/yt-dlp';
+        console.log('Railway environment detected, checking yt-dlp paths...');
+        for (const path of possiblePaths) {
+          if (fs.existsSync(path)) {
+            console.log(`Found yt-dlp at: ${path}`);
+            ytdlOptions.youtubeDlPath = path;
+            break;
+          }
+        }
+        if (!ytdlOptions.youtubeDlPath) {
+          console.log('yt-dlp not found in standard paths, using default');
+        }
       }
 
-      await youtubedl(videoUrl, ytdlOptions);
+      console.log('yt-dlp options:', JSON.stringify(ytdlOptions, null, 2));
+
+      try {
+        await youtubedl(videoUrl, ytdlOptions);
+      } catch (ytdlError: any) {
+        console.error('youtube-dl-exec failed, trying direct yt-dlp command...');
+
+        // Fallback to direct yt-dlp command
+        const command = `yt-dlp -f 'best[ext=mp4]/best' -o '${outputPath}' '${videoUrl}'`;
+        console.log('Running command:', command);
+
+        const { stdout, stderr } = await execAsync(command);
+        console.log('yt-dlp stdout:', stdout);
+        if (stderr) console.error('yt-dlp stderr:', stderr);
+      }
       console.log('TikTok video downloaded successfully');
-    } catch (error) {
+
+      // Verify file was created
+      if (!fs.existsSync(outputPath)) {
+        throw new Error('Video file was not created at expected path');
+      }
+
+      const stats = fs.statSync(outputPath);
+      console.log(`Downloaded file size: ${stats.size} bytes`);
+    } catch (error: any) {
       console.error('yt-dlp error for TikTok:', error);
-      throw new Error(`Failed to download TikTok video: ${error}`);
+      console.error('Error stack:', error?.stack);
+      console.error('Error message:', error?.message);
+      throw new Error(`Failed to download TikTok video: ${error?.message || error}`);
     }
   }
 
   private async downloadYouTubeVideo(videoUrl: string, outputPath: string): Promise<void> {
     console.log('Downloading YouTube video using yt-dlp...');
+    console.log('Original URL:', videoUrl);
 
     // Extract video ID from embed URL if needed
     let videoId = '';
     if (videoUrl.includes('youtube.com/embed/')) {
       videoId = videoUrl.split('embed/')[1].split('?')[0];
       videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      console.log('Converted embed URL to:', videoUrl);
     }
 
     try {
@@ -93,16 +158,57 @@ export class VideoProcessor {
         ]
       };
 
-      // Use system yt-dlp on Railway if available
+      // Check for yt-dlp paths
+      const possiblePaths = [
+        '/usr/local/bin/yt-dlp',
+        '/usr/bin/yt-dlp',
+        '/app/.heroku/python/bin/yt-dlp',
+        '/opt/venv/bin/yt-dlp'
+      ];
+
       if (process.env.RAILWAY_ENVIRONMENT) {
-        ytdlOptions.youtubeDlPath = '/usr/local/bin/yt-dlp';
+        console.log('Railway environment detected, checking yt-dlp paths...');
+        for (const path of possiblePaths) {
+          if (fs.existsSync(path)) {
+            console.log(`Found yt-dlp at: ${path}`);
+            ytdlOptions.youtubeDlPath = path;
+            break;
+          }
+        }
+        if (!ytdlOptions.youtubeDlPath) {
+          console.log('yt-dlp not found in standard paths, using default');
+        }
       }
 
-      await youtubedl(videoUrl, ytdlOptions);
+      console.log('yt-dlp options:', JSON.stringify(ytdlOptions, null, 2));
+
+      try {
+        await youtubedl(videoUrl, ytdlOptions);
+      } catch (ytdlError: any) {
+        console.error('youtube-dl-exec failed, trying direct yt-dlp command...');
+
+        // Fallback to direct yt-dlp command
+        const command = `yt-dlp -f 'best[ext=mp4]/best' -o '${outputPath}' '${videoUrl}'`;
+        console.log('Running command:', command);
+
+        const { stdout, stderr } = await execAsync(command);
+        console.log('yt-dlp stdout:', stdout);
+        if (stderr) console.error('yt-dlp stderr:', stderr);
+      }
       console.log('YouTube video downloaded successfully');
-    } catch (error) {
+
+      // Verify file was created
+      if (!fs.existsSync(outputPath)) {
+        throw new Error('Video file was not created at expected path');
+      }
+
+      const stats = fs.statSync(outputPath);
+      console.log(`Downloaded file size: ${stats.size} bytes`);
+    } catch (error: any) {
       console.error('yt-dlp error:', error);
-      throw new Error(`Failed to download YouTube video: ${error}`);
+      console.error('Error stack:', error?.stack);
+      console.error('Error message:', error?.message);
+      throw new Error(`Failed to download YouTube video: ${error?.message || error}`);
     }
   }
 

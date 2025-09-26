@@ -5,19 +5,57 @@ import path from 'path';
 import { execSync } from 'child_process';
 
 // Try to use ffmpeg-static first, then fall back to system ffmpeg
+let ffmpegPath: string | null = null;
+
 if (ffmpegStatic) {
   console.log('Using ffmpeg-static from:', ffmpegStatic);
-  ffmpeg.setFfmpegPath(ffmpegStatic);
+  ffmpegPath = ffmpegStatic;
 } else {
   console.log('ffmpeg-static not available, checking for system ffmpeg...');
-  try {
-    const ffmpegPath = execSync('which ffmpeg').toString().trim();
-    console.log('Found system ffmpeg at:', ffmpegPath);
-    ffmpeg.setFfmpegPath(ffmpegPath);
-  } catch (error) {
-    console.error('WARNING: ffmpeg not found! Video processing will fail.');
-    console.error('Please ensure ffmpeg is installed on the system.');
+}
+
+// Check multiple possible ffmpeg locations
+const possibleFfmpegPaths = [
+  '/usr/bin/ffmpeg',
+  '/usr/local/bin/ffmpeg',
+  '/app/vendor/ffmpeg/ffmpeg',
+  '/opt/ffmpeg/ffmpeg'
+];
+
+if (!ffmpegPath) {
+  for (const path of possibleFfmpegPaths) {
+    try {
+      if (fs.existsSync(path)) {
+        console.log('Found ffmpeg at:', path);
+        ffmpegPath = path;
+        break;
+      }
+    } catch (error) {
+      // Continue checking other paths
+    }
   }
+}
+
+// Try 'which' command as last resort
+if (!ffmpegPath) {
+  try {
+    const whichPath = execSync('which ffmpeg').toString().trim();
+    if (whichPath) {
+      console.log('Found system ffmpeg via which at:', whichPath);
+      ffmpegPath = whichPath;
+    }
+  } catch (error) {
+    console.error('ffmpeg not found via which command');
+  }
+}
+
+if (ffmpegPath) {
+  ffmpeg.setFfmpegPath(ffmpegPath);
+  console.log('ffmpeg configured successfully at:', ffmpegPath);
+} else {
+  console.error('CRITICAL: ffmpeg not found! Video processing will fail.');
+  console.error('Checked paths:', possibleFfmpegPaths);
+  console.error('Please ensure ffmpeg is installed on the system.');
 }
 
 export interface TrimOptions {
