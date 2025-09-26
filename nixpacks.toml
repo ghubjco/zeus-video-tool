@@ -1,10 +1,13 @@
 [phases.setup]
 nixPkgs = ["nodejs-18_x", "ffmpeg", "python311", "python311Packages.pip"]
+aptPkgs = ["python3-pip"]
 
 [phases.install]
 cmds = [
-  "chmod +x scripts/railway-setup.sh",
-  "./scripts/railway-setup.sh",
+  "python3 --version",
+  "python3 -m pip --version || echo 'pip not available as module'",
+  "pip3 --version || echo 'pip3 not found'",
+  "pip3 install yt-dlp || python3 -m pip install yt-dlp",
   "npm install"
 ]
 

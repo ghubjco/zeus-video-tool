@@ -106,15 +106,28 @@ export class VideoProcessor {
       try {
         await youtubedl(videoUrl, ytdlOptions);
       } catch (ytdlError: any) {
-        console.error('youtube-dl-exec failed, trying direct yt-dlp command...');
+        console.error('youtube-dl-exec failed:', ytdlError.message);
+        console.error('Trying direct yt-dlp command...');
 
-        // Fallback to direct yt-dlp command
-        const command = `yt-dlp -f 'best[ext=mp4]/best' -o '${outputPath}' '${videoUrl}'`;
-        console.log('Running command:', command);
+        try {
+          // Fallback to direct yt-dlp command
+          const command = `yt-dlp -f 'best[ext=mp4]/best' -o '${outputPath}' '${videoUrl}'`;
+          console.log('Running command:', command);
 
-        const { stdout, stderr } = await execAsync(command);
-        console.log('yt-dlp stdout:', stdout);
-        if (stderr) console.error('yt-dlp stderr:', stderr);
+          const { stdout, stderr } = await execAsync(command);
+          console.log('yt-dlp stdout:', stdout);
+          if (stderr) console.error('yt-dlp stderr:', stderr);
+        } catch (cmdError: any) {
+          console.error('Direct yt-dlp command also failed:', cmdError.message);
+
+          // Last resort: try to download directly if it's a direct video URL
+          if (videoUrl.includes('.mp4') || videoUrl.includes('.mov')) {
+            console.log('Attempting direct HTTP download as last resort...');
+            await this.downloadRegularVideo(videoUrl, outputPath);
+          } else {
+            throw new Error(`All download methods failed. Original error: ${ytdlError.message}`);
+          }
+        }
       }
       console.log('TikTok video downloaded successfully');
 
@@ -185,15 +198,28 @@ export class VideoProcessor {
       try {
         await youtubedl(videoUrl, ytdlOptions);
       } catch (ytdlError: any) {
-        console.error('youtube-dl-exec failed, trying direct yt-dlp command...');
+        console.error('youtube-dl-exec failed:', ytdlError.message);
+        console.error('Trying direct yt-dlp command...');
 
-        // Fallback to direct yt-dlp command
-        const command = `yt-dlp -f 'best[ext=mp4]/best' -o '${outputPath}' '${videoUrl}'`;
-        console.log('Running command:', command);
+        try {
+          // Fallback to direct yt-dlp command
+          const command = `yt-dlp -f 'best[ext=mp4]/best' -o '${outputPath}' '${videoUrl}'`;
+          console.log('Running command:', command);
 
-        const { stdout, stderr } = await execAsync(command);
-        console.log('yt-dlp stdout:', stdout);
-        if (stderr) console.error('yt-dlp stderr:', stderr);
+          const { stdout, stderr } = await execAsync(command);
+          console.log('yt-dlp stdout:', stdout);
+          if (stderr) console.error('yt-dlp stderr:', stderr);
+        } catch (cmdError: any) {
+          console.error('Direct yt-dlp command also failed:', cmdError.message);
+
+          // Last resort: try to download directly if it's a direct video URL
+          if (videoUrl.includes('.mp4') || videoUrl.includes('.mov')) {
+            console.log('Attempting direct HTTP download as last resort...');
+            await this.downloadRegularVideo(videoUrl, outputPath);
+          } else {
+            throw new Error(`All download methods failed. Original error: ${ytdlError.message}`);
+          }
+        }
       }
       console.log('YouTube video downloaded successfully');
 
