@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import axios from 'axios';
-const youtubedl = require('youtube-dl-exec');
+import youtubedl from 'youtube-dl-exec';
 
 export interface ProcessVideoOptions {
   videoUrl: string;
@@ -23,6 +23,15 @@ export class VideoProcessor {
   constructor() {
     this.googleDrive = new GoogleDriveService();
     this.twelveLabs = new TwelveLabsService();
+
+    // Log environment for debugging
+    console.log('VideoProcessor initialized. Environment:', {
+      NODE_ENV: process.env.NODE_ENV,
+      hasGoogleCredentials: !!process.env.GOOGLE_CLIENT_ID,
+      hasRefreshToken: !!process.env.GOOGLE_REFRESH_TOKEN,
+      hasTwelveLabsKey: !!process.env.TWELVE_LABS_API_KEY || !!process.env.TL_API_KEY,
+      tmpDir: os.tmpdir()
+    });
   }
 
   private generateFileName(campaignName: string, uploadType: string = 'video'): string {
@@ -37,7 +46,7 @@ export class VideoProcessor {
 
     try {
       // yt-dlp works with TikTok URLs as well
-      await youtubedl(videoUrl, {
+      const ytdlOptions: any = {
         output: outputPath,
         format: 'best[ext=mp4]/best',
         noCheckCertificate: true,
@@ -46,7 +55,14 @@ export class VideoProcessor {
         addHeader: [
           'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         ]
-      });
+      };
+
+      // Use system yt-dlp on Railway if available
+      if (process.env.RAILWAY_ENVIRONMENT) {
+        ytdlOptions.youtubeDlPath = '/usr/local/bin/yt-dlp';
+      }
+
+      await youtubedl(videoUrl, ytdlOptions);
       console.log('TikTok video downloaded successfully');
     } catch (error) {
       console.error('yt-dlp error for TikTok:', error);
@@ -65,7 +81,7 @@ export class VideoProcessor {
     }
 
     try {
-      await youtubedl(videoUrl, {
+      const ytdlOptions: any = {
         output: outputPath,
         format: 'best[ext=mp4]/best',
         noCheckCertificate: true,
@@ -75,7 +91,14 @@ export class VideoProcessor {
           'referer:youtube.com',
           'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         ]
-      });
+      };
+
+      // Use system yt-dlp on Railway if available
+      if (process.env.RAILWAY_ENVIRONMENT) {
+        ytdlOptions.youtubeDlPath = '/usr/local/bin/yt-dlp';
+      }
+
+      await youtubedl(videoUrl, ytdlOptions);
       console.log('YouTube video downloaded successfully');
     } catch (error) {
       console.error('yt-dlp error:', error);
@@ -127,9 +150,22 @@ export class VideoProcessor {
       await this.googleDrive.setRefreshToken(process.env.GOOGLE_REFRESH_TOKEN);
     }
 
-    const tempDir = os.tmpdir();
-    const inputPath = path.join(tempDir, `input_${Date.now()}.mp4`);
-    const outputPath = path.join(tempDir, `output_${Date.now()}.mp4`);
+    // Use /tmp directly on Railway, fallback to os.tmpdir()
+    const tempDir = process.env.RAILWAY_ENVIRONMENT ? '/tmp' : os.tmpdir();
+    const timestamp = Date.now();
+    const inputPath = path.join(tempDir, `input_${timestamp}.mp4`);
+    const outputPath = path.join(tempDir, `output_${timestamp}.mp4`);
+
+    console.log('Using temp directory:', tempDir);
+    console.log('Temp directory exists:', fs.existsSync(tempDir));
+
+    try {
+      fs.accessSync(tempDir, fs.constants.W_OK);
+      console.log('Temp directory is writable');
+    } catch (err) {
+      console.error('Temp directory is NOT writable:', err);
+      throw new Error(`Temp directory ${tempDir} is not writable`);
+    }
 
     try {
       console.log('Processing video from URL:', videoUrl);
@@ -235,9 +271,22 @@ export class VideoProcessor {
       await this.googleDrive.setRefreshToken(process.env.GOOGLE_REFRESH_TOKEN);
     }
 
-    const tempDir = os.tmpdir();
-    const inputPath = path.join(tempDir, `input_${Date.now()}.mp4`);
-    const outputPath = path.join(tempDir, `output_${Date.now()}.mp4`);
+    // Use /tmp directly on Railway, fallback to os.tmpdir()
+    const tempDir = process.env.RAILWAY_ENVIRONMENT ? '/tmp' : os.tmpdir();
+    const timestamp = Date.now();
+    const inputPath = path.join(tempDir, `input_${timestamp}.mp4`);
+    const outputPath = path.join(tempDir, `output_${timestamp}.mp4`);
+
+    console.log('Using temp directory:', tempDir);
+    console.log('Temp directory exists:', fs.existsSync(tempDir));
+
+    try {
+      fs.accessSync(tempDir, fs.constants.W_OK);
+      console.log('Temp directory is writable');
+    } catch (err) {
+      console.error('Temp directory is NOT writable:', err);
+      throw new Error(`Temp directory ${tempDir} is not writable`);
+    }
 
     try {
       // Write buffer to file
